@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { Sidebar } from "~/components/sidebar";
 
 export default async function DashboardLayout({
   children,
@@ -14,8 +15,9 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      {children}
+    <div className="min-h-screen bg-white text-gray-900">
+      <Sidebar />
+      <div className="pl-64">{children}</div>
     </div>
   );
 }

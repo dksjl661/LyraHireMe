@@ -1,6 +1,5 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -38,21 +37,14 @@ export function BaseDetailView({ baseId }: BaseDetailViewProps) {
   });
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-10">
-      <div className="flex items-center justify-between gap-4">
+    <div className="flex w-full flex-col gap-10 bg-white px-6 py-10">
+      <div className="flex items-center gap-4">
         <Link
           href="/bases"
-          className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold tracking-wide text-slate-200 transition hover:border-white/20 hover:bg-white/10"
+          className="inline-flex w-fit items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold tracking-wide text-gray-700 transition hover:border-gray-300 hover:bg-gray-100"
         >
           ← All bases
         </Link>
-        <UserButton
-          appearance={{
-            elements: {
-              avatarBox: "h-10 w-10",
-            },
-          }}
-        />
       </div>
 
       <BaseHeader
@@ -79,7 +71,8 @@ export function BaseDetailView({ baseId }: BaseDetailViewProps) {
             onOpen={() => router.push(`/bases/${baseId}/tables/${table.id}`)}
             onDelete={() => deleteTable.mutate({ tableId: table.id })}
             isDeleting={
-              deleteTable.isPending && deleteTable.variables?.tableId === table.id
+              deleteTable.isPending &&
+              deleteTable.variables?.tableId === table.id
             }
           />
         ))}
