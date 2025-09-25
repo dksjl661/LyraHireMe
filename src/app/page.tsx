@@ -1,53 +1,75 @@
-import Link from "next/link";
+import Link from 'next/link'
 
-import { LatestPost } from "~/app/_components/post";
-import { api, HydrateClient } from "~/trpc/server";
+import {
+  SignedOut,
+  SignInButton,
+  SignedIn,
+  SignOutButton,
+  SignUpButton,
+} from '@clerk/nextjs'
 
-export default async function Home() {
-  const hello = await api.post.hello({ text: "from tRPC" });
-
-  void api.post.getLatest.prefetch();
-
+export default function Home() {
   return (
-    <HydrateClient>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-          <h1 className="text-5xl font-extrabold tracking-tight sm:text-[5rem]">
-            Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
-          </h1>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/usage/first-steps"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">First Steps →</h3>
-              <div className="text-lg">
-                Just the basics - Everything you need to know to set up your
-                database and authentication.
-              </div>
-            </Link>
-            <Link
-              className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 hover:bg-white/20"
-              href="https://create.t3.gg/en/introduction"
-              target="_blank"
-            >
-              <h3 className="text-2xl font-bold">Documentation →</h3>
-              <div className="text-lg">
-                Learn more about Create T3 App, the libraries it uses, and how
-                to deploy it.
-              </div>
-            </Link>
-          </div>
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-2xl text-white">
-              {hello ? hello.greeting : "Loading tRPC query..."}
-            </p>
-          </div>
+    <main className="relative flex min-h-screen flex-col overflow-hidden bg-sky-50 text-slate-900">
+      <div className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(circle_at_top,_rgba(125,211,252,0.45),_transparent_60%)]" />
+      <div className="pointer-events-none absolute inset-x-[-20%] top-[-18rem] -z-10 h-[32rem] rounded-full bg-sky-200/60 blur-3xl" />
 
-          <LatestPost />
-        </div>
-      </main>
-    </HydrateClient>
-  );
+      <div className="relative mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 py-16">
+        <section className="w-full rounded-3xl bg-white/70 p-10 shadow-xl shadow-sky-200/60 ring-1 ring-white/60 backdrop-blur-lg sm:p-14">
+          <span className="inline-flex items-center gap-2 rounded-full bg-sky-100 px-4 py-1 text-sm font-medium text-sky-700">
+            <span className="size-2 rounded-full bg-sky-500" aria-hidden />
+            Lyra Airtable: The modern Airtable alternative
+          </span>
+
+          <h1 className="mt-6 text-4xl font-semibold leading-tight text-slate-900 sm:text-5xl">
+            Build your Airtable here mate!
+          </h1>
+
+          <p className="mt-4 max-w-2xl text-lg text-slate-600">
+            Stay organized, collaborate instantly, and keep your data glowing. Sign in to access your
+            personalized Lyra Airtable dashboard, or create a new account to get started in moments.
+          </p>
+
+          <div className="mt-10 flex flex-wrap items-center gap-4">
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-gradient-to-r from-sky-400 via-sky-500 to-blue-500 px-8 py-3 text-base font-semibold text-white shadow-lg shadow-sky-300/50 transition duration-200 hover:shadow-xl hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">
+                  <span className="absolute inset-0 translate-y-full bg-white/20 opacity-0 transition group-hover:translate-y-0 group-hover:opacity-100" aria-hidden />
+                  <span className="relative">Sign In</span>
+                </button>
+              </SignInButton>
+              <div className="ml-1 inline-flex items-center gap-1 text-sm text-slate-500">
+                <span>No account yet?</span>
+                <SignUpButton mode="modal" fallbackRedirectUrl="/">
+                  <span className="cursor-pointer font-semibold text-sky-600 transition hover:text-sky-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">
+                    Create one
+                  </span>
+                </SignUpButton>
+              </div>
+            </SignedOut>
+
+            <SignedIn>
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href="/bases"
+                  className="inline-flex items-center justify-center rounded-full bg-sky-500 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-400"
+                >
+                  Open your bases
+                </Link>
+                <SignOutButton signOutOptions={{ redirectUrl: '/' }}>
+                  <button className="inline-flex items-center justify-center rounded-full border border-sky-200/80 bg-white/80 px-6 py-2.5 text-sm font-semibold text-sky-700 shadow-sm transition hover:bg-sky-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500">
+                    Sign Out
+                  </button>
+                </SignOutButton>
+              </div>
+            </SignedIn>
+          </div>
+        </section>
+
+        <footer className="mt-12 text-center text-sm text-slate-500">
+          Need a tour? Check out the resources in your dashboard after signing in.
+        </footer>
+      </div>
+    </main>
+  )
 }

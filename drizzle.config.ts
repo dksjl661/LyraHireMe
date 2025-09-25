@@ -8,5 +8,10 @@ export default {
   dbCredentials: {
     url: env.DATABASE_URL,
   },
-  tablesFilter: ["lyra-airtable_*"],
+  tablesFilter: [
+    "bases",
+    "base_tables",
+    "table_fields",
+    "table_records",
+  ],
 } satisfies Config;
