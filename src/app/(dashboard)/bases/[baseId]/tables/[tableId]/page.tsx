@@ -15,6 +15,7 @@ export default async function TablePage({ params }: TablePageProps) {
   await Promise.all([
     api.base.get.prefetch({ baseId }),
     api.table.get.prefetch({ tableId }),
+    api.table.getRecords.prefetch({ tableId, limit: 50 }),
   ]);
 
   return (

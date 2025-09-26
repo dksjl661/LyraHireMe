@@ -1,7 +1,15 @@
-import { index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { relations, sql } from "drizzle-orm";
 
-type FieldType = "text" | "singleSelect" | "longText" | "checkbox";
+type FieldType = "text" | "singleSelect" | "longText" | "checkbox" | "date";
 
 type FieldConfig = {
   options?: Array<{ label: string; color: string }>;
@@ -51,14 +59,20 @@ export const tableFields = pgTable(
     name: text("name").notNull(),
     type: text("type").$type<FieldType>().notNull(),
     orderIndex: integer("order_index").notNull(),
-    config: jsonb("config").$type<FieldConfig>().notNull().default(sql`'{}'::jsonb`),
+    config: jsonb("config")
+      .$type<FieldConfig>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
   (table) => ({
     tableIdx: index("table_fields_table_idx").on(table.tableId),
-    orderIdx: index("table_fields_order_idx").on(table.tableId, table.orderIndex),
+    orderIdx: index("table_fields_order_idx").on(
+      table.tableId,
+      table.orderIndex,
+    ),
   }),
 );
 
@@ -69,14 +83,20 @@ export const tableRecords = pgTable(
     tableId: uuid("table_id")
       .notNull()
       .references(() => baseTables.id, { onDelete: "cascade" }),
-    values: jsonb("values").$type<RecordValues>().notNull().default(sql`'{}'::jsonb`),
+    values: jsonb("values")
+      .$type<RecordValues>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
   },
   (table) => ({
     tableIdx: index("table_records_table_idx").on(table.tableId),
-    createdIdx: index("table_records_created_idx").on(table.tableId, table.createdAt),
+    createdIdx: index("table_records_created_idx").on(
+      table.tableId,
+      table.createdAt,
+    ),
   }),
 );
 

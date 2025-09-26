@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { api } from "~/trpc/react";
 import { createGradientPair } from "~/lib/color";
 
-import { EnhancedTable } from "./enhanced-table";
+import { InfiniteTable } from "./infinite-table";
 
 type TableViewProps = {
   baseId: string;
@@ -24,7 +24,7 @@ export function TableView({ baseId, tableId }: TableViewProps) {
 
   return (
     <div className="flex w-full flex-col gap-4 bg-white px-6 py-6">
-      <header className="flex flex-col gap-2">
+      <header className="flex h-14 flex-col justify-between">
         <nav className="flex flex-wrap items-center gap-2 text-xs font-semibold tracking-[0.35em] text-gray-500 uppercase">
           <Link href="/bases" className="transition hover:text-gray-700">
             Bases
@@ -49,8 +49,10 @@ export function TableView({ baseId, tableId }: TableViewProps) {
       </header>
 
       <div className="rounded-lg border border-gray-200 bg-white p-0 shadow-sm">
-        <EnhancedTable />
+        <InfiniteTable tableId={tableId} />
       </div>
     </div>
   );
 }
+
+// 56px + 48px + 45px + 32px

@@ -6,7 +6,7 @@ import { TableRow } from "./table-row";
 import { getFieldDisplayName } from "./table-utils";
 
 type TableField = RouterOutputs["table"]["get"]["fields"][number];
-type TableRecord = RouterOutputs["table"]["get"]["records"][number];
+type TableRecord = RouterOutputs["table"]["getRecords"]["records"][number];
 
 type TableGridProps = {
   fields: TableField[];

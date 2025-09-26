@@ -53,29 +53,43 @@ export function BaseDetailView({ baseId }: BaseDetailViewProps) {
         isDeleting={deleteBase.isPending}
       />
 
-      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        <CreateTableCard
-          baseColor={base.color}
-          baseId={baseId}
-          onCreated={(response) => {
-            if (!response?.table) return;
-            void utils.base.get.invalidate({ baseId });
-            void utils.table.listByBase.invalidate({ baseId });
-            router.push(`/bases/${baseId}/tables/${response.table.id}`);
-          }}
-        />
-        {tables.map((table) => (
-          <TableCard
-            key={table.id}
-            table={table}
-            onOpen={() => router.push(`/bases/${baseId}/tables/${table.id}`)}
-            onDelete={() => deleteTable.mutate({ tableId: table.id })}
-            isDeleting={
-              deleteTable.isPending &&
-              deleteTable.variables?.tableId === table.id
-            }
+      <section>
+        {tables.length === 0 && (
+          <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <h3 className="text-sm font-medium text-blue-900">
+              💡 Create your first table
+            </h3>
+            <p className="mt-1 text-sm text-blue-700">
+              This base doesn't have any tables yet. Use the card below to
+              create your first table and start organizing your data.
+            </p>
+          </div>
+        )}
+
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <CreateTableCard
+            baseColor={base.color}
+            baseId={baseId}
+            onCreated={(response) => {
+              if (!response?.table) return;
+              void utils.base.get.invalidate({ baseId });
+              void utils.table.listByBase.invalidate({ baseId });
+              router.push(`/bases/${baseId}/tables/${response.table.id}`);
+            }}
           />
-        ))}
+          {tables.map((table) => (
+            <TableCard
+              key={table.id}
+              table={table}
+              onOpen={() => router.push(`/bases/${baseId}/tables/${table.id}`)}
+              onDelete={() => deleteTable.mutate({ tableId: table.id })}
+              isDeleting={
+                deleteTable.isPending &&
+                deleteTable.variables?.tableId === table.id
+              }
+            />
+          ))}
+        </div>
       </section>
     </div>
   );
