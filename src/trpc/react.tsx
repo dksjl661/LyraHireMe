@@ -46,8 +46,11 @@ export function TRPCReactProvider(props: { children: React.ReactNode }) {
       links: [
         loggerLink({
           enabled: (op) =>
-            process.env.NODE_ENV === "development" ||
-            (op.direction === "down" && op.result instanceof Error),
+            op.direction === "down" && op.result instanceof Error,
+          console: {
+            log: () => {}, // Disable regular logs
+            error: (msg: any) => console.error(msg), // Only allow errors
+          },
         }),
         httpBatchStreamLink({
           transformer: SuperJSON,
