@@ -10,11 +10,67 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
-import {
-  generateFakeData,
-  type FakeRecord,
-  FIELD_DEFINITIONS,
-} from "~/lib/fake-data";
+
+// Airtable-style data structure
+interface AirtableRecord {
+  id: string;
+  deliverableName: string;
+  description: string;
+  dueDate: string;
+  status: "Completed" | "In Progress" | "Blocked" | "Not Started";
+  project: string;
+  assignedTeamMember: string;
+}
+
+// Generate fake data that matches the screenshot
+function generateAirtableData(count: number): AirtableRecord[] {
+  const statuses: Array<
+    "Completed" | "In Progress" | "Blocked" | "Not Started"
+  > = ["Completed", "In Progress", "Blocked", "Not Started"];
+
+  const projects = [
+    "Solar Grid Expansion",
+    "Battery Storage Pilot",
+    "Wind Turbine Maintenance",
+    "Hydro Plant Efficiency Upgrade",
+    "Smart Meter Rollout",
+  ];
+
+  const teamMembers = [
+    "Alexandra Chen",
+    "Jorge Martinez",
+    "Marcus Patel",
+    "Priya Singh",
+  ];
+
+  const deliverables = [
+    "Initial System Architecture",
+    "User Acceptance Test Plan",
+    "API Integration Document",
+    "Final Project Report",
+    "Deployment Checklist",
+  ];
+
+  const descriptions = [
+    "Comprehensive diagram ...",
+    "Document detailing the U...",
+    "Technical documentation ...",
+    "Comprehensive report su...",
+    "Step-by-step checklist fo...",
+  ];
+
+  return Array.from({ length: count }, (_, i) => ({
+    id: `record-${i + 1}`,
+    deliverableName: deliverables[i % deliverables.length]!,
+    description: descriptions[i % descriptions.length]!,
+    dueDate: new Date(2025, 8 + (i % 3), 10 + (i % 20)).toLocaleDateString(
+      "en-US",
+    ),
+    status: statuses[i % statuses.length]!,
+    project: projects[i % projects.length]!,
+    assignedTeamMember: teamMembers[i % teamMembers.length]!,
+  }));
+}
 
 // Context Menu Component
 interface ContextMenuProps {
@@ -50,7 +106,7 @@ function ContextMenu({
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 min-w-[150px] rounded-lg border border-white/20 bg-slate-800/95 py-2 shadow-xl backdrop-blur-sm"
+      className="fixed z-50 min-w-[150px] rounded-lg border border-gray-200 bg-white py-2 shadow-xl"
       style={{ left: x, top: y }}
     >
       {type === "row" && onDeleteRow && (
@@ -59,7 +115,7 @@ function ContextMenu({
             onDeleteRow();
             onClose();
           }}
-          className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/20"
+          className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
         >
           Delete Row
         </button>
@@ -70,7 +126,7 @@ function ContextMenu({
             onDeleteColumn();
             onClose();
           }}
-          className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/20"
+          className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
         >
           Delete Column
         </button>
@@ -81,9 +137,9 @@ function ContextMenu({
 
 // Editable Cell Component
 interface EditableCellProps {
-  value: any;
-  field: (typeof FIELD_DEFINITIONS)[number];
-  onSave: (value: any) => void;
+  value: unknown;
+  field: string;
+  onSave: (value: unknown) => void;
 }
 
 function EditableCell({ value, field, onSave }: EditableCellProps) {
@@ -105,110 +161,58 @@ function EditableCell({ value, field, onSave }: EditableCellProps) {
   };
 
   const renderValue = () => {
-    if (field.type === "checkbox") {
-      return <span className="text-base">{value ? "✅" : "⬜️"}</span>;
-    }
-
-    if (field.type === "singleSelect") {
-      const colors = {
-        "Not Started": "#9CA3AF",
-        "In Progress": "#3B82F6",
-        Review: "#F59E0B",
-        Done: "#10B981",
-        Blocked: "#EF4444",
-        Low: "#10B981",
-        Medium: "#F59E0B",
-        High: "#F97316",
-        Urgent: "#EF4444",
-        Bug: "#EF4444",
-        Feature: "#3B82F6",
-        Task: "#6B7280",
-        Epic: "#8B5CF6",
-        Story: "#06B6D4",
+    if (field === "status") {
+      const statusColors = {
+        Completed: "bg-green-100 text-green-800",
+        "In Progress": "bg-blue-100 text-blue-800",
+        Blocked: "bg-red-100 text-red-800",
+        "Not Started": "bg-gray-100 text-gray-800",
       };
-      const color = colors[value as keyof typeof colors] || "#6B7280";
+
+      const colorClass =
+        statusColors[value as keyof typeof statusColors] ||
+        "bg-gray-100 text-gray-800";
 
       return (
         <span
-          className="inline-flex max-w-full items-center truncate rounded-full px-2.5 py-1 text-xs font-medium"
-          style={{
-            backgroundColor: `${color}15`,
-            color,
-          }}
-          title={value}
+          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${colorClass}`}
         >
-          <span className="truncate">{value}</span>
-        </span>
-      );
-    }
-
-    if (field.type === "number") {
-      return (
-        <span className="truncate font-mono" title={`${value}%`}>
-          {value}%
+          {value as string}
         </span>
       );
     }
 
     return (
-      <span className="block max-w-full truncate" title={String(value)}>
-        {value}
+      <span className="block truncate" title={String(value)}>
+        {value as string}
       </span>
     );
   };
 
   const renderEditInput = () => {
-    if (field.type === "checkbox") {
-      return (
-        <input
-          type="checkbox"
-          checked={editValue}
-          onChange={(e) => setEditValue(e.target.checked)}
-          onBlur={handleSave}
-          autoFocus
-          className="h-4 w-4 rounded border border-gray-300 bg-transparent"
-        />
-      );
-    }
-
-    if (field.type === "singleSelect" && "options" in field) {
+    if (field === "status") {
       return (
         <select
-          value={editValue}
+          value={String(editValue)}
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={handleSave}
           onKeyDown={handleKeyDown}
           autoFocus
           className="w-full border-0 bg-transparent px-0 py-0 text-sm text-gray-900 focus:outline-none"
         >
-          {field.options.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
+          <option value="Completed">Completed</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Blocked">Blocked</option>
+          <option value="Not Started">Not Started</option>
         </select>
       );
     }
 
-    if (field.type === "number") {
-      return (
-        <input
-          type="number"
-          value={editValue}
-          onChange={(e) => setEditValue(Number(e.target.value))}
-          onBlur={handleSave}
-          onKeyDown={handleKeyDown}
-          autoFocus
-          className="w-full border-0 bg-transparent px-0 py-0 text-sm text-gray-900 focus:outline-none"
-        />
-      );
-    }
-
-    if (field.type === "date") {
+    if (field === "dueDate") {
       return (
         <input
           type="date"
-          value={editValue}
+          value={String(editValue)}
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={handleSave}
           onKeyDown={handleKeyDown}
@@ -221,26 +225,19 @@ function EditableCell({ value, field, onSave }: EditableCellProps) {
     return (
       <input
         type="text"
-        value={editValue}
+        value={String(editValue)}
         onChange={(e) => setEditValue(e.target.value)}
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
         autoFocus
-        className="w-full rounded border border-white/20 bg-slate-700 px-2 py-1 text-sm text-white"
+        className="w-full border-0 bg-transparent px-0 py-0 text-sm text-gray-900 focus:outline-none"
       />
     );
   };
 
-  const getAlignmentClass = () => {
-    if (field.type === "number") return "text-right";
-    if (field.type === "checkbox") return "text-center";
-    if (field.type === "date") return "text-left";
-    return "text-left";
-  };
-
   return (
     <div
-      className={`h-[32px] w-full cursor-pointer px-3 py-1 ${getAlignmentClass()} flex items-center ${!isEditing ? "hover:bg-gray-50" : "bg-white"}`}
+      className="flex h-8 w-full cursor-pointer items-center px-3 py-1 hover:bg-gray-50"
       onDoubleClick={() => !isEditing && setIsEditing(true)}
     >
       <div className="w-full overflow-hidden">
@@ -254,12 +251,126 @@ function EditableCell({ value, field, onSave }: EditableCellProps) {
   );
 }
 
+// Top Toolbar Component
+function TopToolbar() {
+  return (
+    <div className="flex items-center gap-2 border-b border-gray-200 bg-white px-4 py-2">
+      <button className="flex items-center gap-2 rounded px-3 py-1 text-sm text-gray-600 hover:bg-gray-100">
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L9.171 9.171m.707.707L15.121 15.121m0 0l.707.707M9.171 9.171l6.363 6.363"
+          />
+        </svg>
+        Hide fields
+      </button>
+
+      <button className="flex items-center gap-2 rounded px-3 py-1 text-sm text-gray-600 hover:bg-gray-100">
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+          />
+        </svg>
+        Filter
+      </button>
+
+      <button className="flex items-center gap-2 rounded px-3 py-1 text-sm text-gray-600 hover:bg-gray-100">
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+          />
+        </svg>
+        Group
+      </button>
+
+      <button className="flex items-center gap-2 rounded px-3 py-1 text-sm text-gray-600 hover:bg-gray-100">
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2V7"
+          />
+        </svg>
+        Sort
+      </button>
+
+      <button className="flex items-center gap-2 rounded px-3 py-1 text-sm text-gray-600 hover:bg-gray-100">
+        <div className="h-4 w-4 rounded bg-blue-500"></div>
+        Color
+      </button>
+
+      <div className="flex-1"></div>
+
+      <button className="flex items-center gap-2 rounded px-3 py-1 text-sm text-gray-600 hover:bg-gray-100">
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
+          />
+        </svg>
+        Share and sync
+      </button>
+
+      <button className="rounded p-1 text-gray-600 hover:bg-gray-100">
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
 export function EnhancedTable() {
-  const [data, setData] = useState<FakeRecord[]>(() => generateFakeData(1000));
+  const [data, setData] = useState<AirtableRecord[]>(() =>
+    generateAirtableData(10),
+  );
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [visibleFields, setVisibleFields] = useState(() => [
-    ...FIELD_DEFINITIONS,
-  ]);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
     y: number;
@@ -268,76 +379,170 @@ export function EnhancedTable() {
     columnId?: string;
   } | null>(null);
 
-  const columns = useMemo<ColumnDef<FakeRecord>[]>(
+  const columns = useMemo<ColumnDef<AirtableRecord>[]>(
     () => [
       {
         id: "select",
         header: "",
-        size: 40,
+        size: 50,
         cell: ({ row }) => (
-          <div className="flex h-full items-center justify-center">
-            <span className="text-xs text-gray-400">{row.index + 1}</span>
+          <div className="flex h-full items-center justify-center text-xs text-gray-400">
+            {row.index + 1}
           </div>
         ),
       },
-      ...visibleFields.map((field) => ({
-        accessorKey: field.id,
-        header: ({ column }: any) => (
-          <div
-            className={`flex items-center gap-2 ${
-              field.type === "number"
-                ? "justify-end"
-                : field.type === "checkbox"
-                  ? "justify-center"
-                  : field.type === "date"
-                    ? "justify-start"
-                    : "justify-start"
-            }`}
-          >
-            <span className="text-xs text-gray-500">
-              {field.type === "text" && "📝"}
-              {field.type === "email" && "📧"}
-              {field.type === "singleSelect" && "🏷️"}
-              {field.type === "number" && "🔢"}
-              {field.type === "date" && "📅"}
-              {field.type === "longText" && "📄"}
-              {field.type === "checkbox" && "☑️"}
-            </span>
-            <span className="truncate">{field.name}</span>
+      {
+        accessorKey: "deliverableName",
+        header: () => (
+          <div className="flex items-center gap-2">
+            <span className="text-xs">📋</span>
+            <span>Deliverable Name</span>
           </div>
         ),
-        size:
-          field.type === "longText"
-            ? 360
-            : field.type === "checkbox"
-              ? 120
-              : field.id === "name"
-                ? 240
-                : field.id === "email"
-                  ? 300
-                  : field.id === "assignee"
-                    ? 216
-                    : field.id === "dueDate"
-                      ? 432
-                      : 180,
-        cell: ({ getValue, row, column }: any) => (
+        size: 250,
+        cell: ({ getValue, row }) => (
           <EditableCell
             value={getValue()}
-            field={field}
+            field="deliverableName"
             onSave={(newValue) => {
               setData((prev) =>
                 prev.map((item, index) =>
                   index === row.index
-                    ? { ...item, [field.id]: newValue }
+                    ? { ...item, deliverableName: String(newValue) }
                     : item,
                 ),
               );
             }}
           />
         ),
-      })),
+      },
+      {
+        accessorKey: "description",
+        header: () => (
+          <div className="flex items-center gap-2">
+            <span className="text-xs">📝</span>
+            <span>Description</span>
+          </div>
+        ),
+        size: 200,
+        cell: ({ getValue, row }) => (
+          <EditableCell
+            value={getValue()}
+            field="description"
+            onSave={(newValue) => {
+              setData((prev) =>
+                prev.map((item, index) =>
+                  index === row.index
+                    ? { ...item, description: String(newValue) }
+                    : item,
+                ),
+              );
+            }}
+          />
+        ),
+      },
+      {
+        accessorKey: "dueDate",
+        header: () => (
+          <div className="flex items-center gap-2">
+            <span className="text-xs">📅</span>
+            <span>Due Date</span>
+          </div>
+        ),
+        size: 120,
+        cell: ({ getValue, row }) => (
+          <EditableCell
+            value={getValue()}
+            field="dueDate"
+            onSave={(newValue) => {
+              setData((prev) =>
+                prev.map((item, index) =>
+                  index === row.index
+                    ? { ...item, dueDate: String(newValue) }
+                    : item,
+                ),
+              );
+            }}
+          />
+        ),
+      },
+      {
+        accessorKey: "status",
+        header: () => (
+          <div className="flex items-center gap-2">
+            <span className="text-xs">🔄</span>
+            <span>Status</span>
+          </div>
+        ),
+        size: 120,
+        cell: ({ getValue, row }) => (
+          <EditableCell
+            value={getValue()}
+            field="status"
+            onSave={(newValue) => {
+              setData((prev) =>
+                prev.map((item, index) =>
+                  index === row.index
+                    ? { ...item, status: newValue as AirtableRecord["status"] }
+                    : item,
+                ),
+              );
+            }}
+          />
+        ),
+      },
+      {
+        accessorKey: "project",
+        header: () => (
+          <div className="flex items-center gap-2">
+            <span className="text-xs">📁</span>
+            <span>Project</span>
+          </div>
+        ),
+        size: 180,
+        cell: ({ getValue, row }) => (
+          <EditableCell
+            value={getValue()}
+            field="project"
+            onSave={(newValue) => {
+              setData((prev) =>
+                prev.map((item, index) =>
+                  index === row.index
+                    ? { ...item, project: String(newValue) }
+                    : item,
+                ),
+              );
+            }}
+          />
+        ),
+      },
+      {
+        accessorKey: "assignedTeamMember",
+        header: () => (
+          <div className="flex items-center gap-2">
+            <span className="text-xs">👤</span>
+            <span>Assigned Team Me...</span>
+          </div>
+        ),
+        size: 160,
+        cell: ({ getValue, row }) => (
+          <EditableCell
+            value={getValue()}
+            field="assignedTeamMember"
+            onSave={(newValue) => {
+              setData((prev) =>
+                prev.map((item, index) =>
+                  index === row.index
+                    ? { ...item, assignedTeamMember: String(newValue) }
+                    : item,
+                ),
+              );
+            }}
+          />
+        ),
+      },
     ],
-    [visibleFields],
+    [],
   );
 
   const table = useReactTable({
@@ -387,71 +592,31 @@ export function EnhancedTable() {
   }, [contextMenu]);
 
   const handleDeleteColumn = useCallback(() => {
-    if (contextMenu?.columnId && contextMenu.columnId !== "select") {
-      // Remove the column from visible fields
-      setVisibleFields((prev) =>
-        prev.filter((field) => field.id !== contextMenu.columnId),
-      );
-
-      // Remove the column data from all records
-      setData((prev) =>
-        prev.map((record) => {
-          const newRecord = { ...record };
-          delete (newRecord as any)[contextMenu.columnId as string];
-          return newRecord;
-        }),
-      );
-    }
-  }, [contextMenu]);
+    // Column deletion logic can be implemented here
+  }, []);
 
   const handleAddRow = () => {
-    setData((prev) => [...prev, ...generateFakeData(1)]);
-  };
-
-  const handleAddColumn = () => {
-    // Find hidden fields that can be restored
-    const hiddenFields = FIELD_DEFINITIONS.filter(
-      (field) => !visibleFields.some((vf) => vf.id === field.id),
-    );
-
-    if (hiddenFields.length > 0) {
-      // Add the first hidden field back
-      const fieldToAdd = hiddenFields[0];
-      if (fieldToAdd) {
-        setVisibleFields((prev) => [...prev, fieldToAdd]);
-
-        // Regenerate data for the restored field
-        setData((prev) =>
-          prev.map((record) => ({
-            ...record,
-            [fieldToAdd.id]:
-              generateFakeData(1)[0]?.[fieldToAdd.id as keyof FakeRecord] ?? "",
-          })),
-        );
-      }
-    }
+    const newRecord: AirtableRecord = {
+      id: `record-${data.length + 1}`,
+      deliverableName: "",
+      description: "",
+      dueDate: new Date().toLocaleDateString("en-US"),
+      status: "Not Started",
+      project: "",
+      assignedTeamMember: "",
+    };
+    setData((prev) => [...prev, newRecord]);
   };
 
   return (
     <div className="flex h-full flex-col bg-white">
-      {/* Controls */}
-      <div className="mb-2 flex items-center justify-between border-b border-gray-100 pb-2">
-        <span className="text-xs text-gray-500">{data.length} records</span>
-        {FIELD_DEFINITIONS.length > visibleFields.length && (
-          <button
-            onClick={handleAddColumn}
-            className="text-xs text-blue-600 hover:text-blue-700"
-          >
-            + Restore field ({FIELD_DEFINITIONS.length - visibleFields.length}{" "}
-            hidden)
-          </button>
-        )}
-      </div>
+      {/* Top Toolbar */}
+      <TopToolbar />
 
       {/* Table Container */}
       <div
         ref={parentRef}
-        className="flex-1 overflow-auto rounded-lg border border-gray-200 bg-white shadow-sm"
+        className="flex-1 overflow-auto bg-white"
         style={{ height: "calc(100vh - 180px)" }}
       >
         <div
@@ -461,16 +626,13 @@ export function EnhancedTable() {
           }}
         >
           {/* Header */}
-          <div className="sticky top-0 z-10 bg-gray-50">
+          <div className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50">
             {table.getHeaderGroups().map((headerGroup) => (
-              <div
-                key={headerGroup.id}
-                className="flex border-b border-gray-200"
-              >
+              <div key={headerGroup.id} className="flex">
                 {headerGroup.headers.map((header) => (
                   <div
                     key={header.id}
-                    className="flex h-[32px] items-center border-r border-gray-100 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-700 last:border-r-0"
+                    className="flex h-8 items-center border-r border-gray-200 bg-gray-50 px-3 py-2 text-xs font-medium text-gray-700 last:border-r-0"
                     style={{ width: header.getSize() }}
                     onContextMenu={(e) =>
                       handleContextMenu(e, "column", undefined, header.id)
@@ -516,7 +678,7 @@ export function EnhancedTable() {
             return (
               <div
                 key={row.id}
-                className="absolute left-0 flex h-[32px] w-full border-b border-gray-100 bg-white hover:bg-gray-50"
+                className="absolute left-0 flex h-8 w-full border-b border-gray-100 bg-white hover:bg-gray-50"
                 style={{
                   height: `32px`,
                   transform: `translateY(${virtualRow.start}px)`,
@@ -528,7 +690,7 @@ export function EnhancedTable() {
                 {row.getVisibleCells().map((cell) => (
                   <div
                     key={cell.id}
-                    className="h-[32px] overflow-hidden border-r border-gray-100 text-sm text-gray-900 last:border-r-0"
+                    className="h-8 overflow-hidden border-r border-gray-100 text-xs text-gray-900 last:border-r-0"
                     style={{ width: cell.column.getSize() }}
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -540,7 +702,7 @@ export function EnhancedTable() {
 
           {/* Add Row Button */}
           <div
-            className="absolute left-0 flex h-[32px] w-full cursor-pointer border-b border-gray-100 bg-white hover:bg-gray-50"
+            className="absolute left-0 flex h-8 w-full cursor-pointer border-b border-gray-100 bg-white hover:bg-gray-50"
             style={{
               height: `32px`,
               transform: `translateY(${virtualizer.getTotalSize()}px)`,
@@ -549,19 +711,22 @@ export function EnhancedTable() {
           >
             <div
               className="flex items-center justify-center border-r border-gray-100"
-              style={{ width: 40 }}
+              style={{ width: 50 }}
             >
-              <button className="flex h-6 w-6 items-center justify-center text-lg text-gray-400 hover:text-gray-600">
+              <button className="flex h-4 w-4 items-center justify-center text-xs text-gray-400 hover:text-gray-600">
                 +
               </button>
             </div>
-            {visibleFields.map((field) => (
-              <div
-                key={field.id}
-                className="flex h-[32px] items-center overflow-hidden border-r border-gray-100 px-3 text-sm text-gray-400 last:border-r-0"
-                style={{ width: table.getColumn(field.id)?.getSize() }}
-              ></div>
-            ))}
+            {table
+              .getAllColumns()
+              .slice(1)
+              .map((column) => (
+                <div
+                  key={column.id}
+                  className="flex h-8 items-center overflow-hidden border-r border-gray-100 px-3 text-xs text-gray-400 last:border-r-0"
+                  style={{ width: column.getSize() }}
+                ></div>
+              ))}
           </div>
         </div>
       </div>

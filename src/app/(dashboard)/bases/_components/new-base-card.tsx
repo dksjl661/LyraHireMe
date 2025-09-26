@@ -30,9 +30,9 @@ export function NewBaseCard({ onCreated }: NewBaseCardProps) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-[270px] flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-white/40 bg-white/[0.04] text-sm font-semibold text-white/80 transition hover:border-white/70 hover:bg-white/[0.08] hover:text-white"
+        className="flex h-[270px] flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-gray-300 bg-gray-50 text-sm font-semibold text-gray-600 transition hover:border-gray-400 hover:bg-gray-100 hover:text-gray-700"
       >
-        <span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-2xl text-white/90">
+        <span className="flex h-16 w-16 items-center justify-center rounded-2xl border border-gray-200 bg-white text-2xl text-gray-500">
           +
         </span>
         New base
@@ -41,10 +41,10 @@ export function NewBaseCard({ onCreated }: NewBaseCardProps) {
   }
 
   return (
-    <div className="flex h-[270px] flex-col rounded-3xl border border-white/10 bg-slate-900/70 p-6 shadow-[0_30px_70px_-40px_rgba(15,23,42,0.9)]">
-      <h2 className="text-lg font-semibold text-white">Create a base</h2>
-      <p className="mb-4 mt-1 text-sm text-slate-300/80">
-        Choose a name, description, and accent color to match Airtable’s polish.
+    <div className="flex h-[270px] flex-col rounded-3xl border border-gray-200 bg-white p-6 shadow-lg">
+      <h2 className="text-lg font-semibold text-gray-900">Create a base</h2>
+      <p className="mt-1 mb-4 text-sm text-gray-600">
+        Choose a name, description, and accent color to match Airtable's polish.
       </p>
       <CreateBaseForm
         onSubmit={async (values) => {

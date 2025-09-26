@@ -26,7 +26,11 @@ export const BASE_COLOR_OPTIONS = [
   "#14b8a6",
 ];
 
-export function CreateBaseForm({ onSubmit, onCancel, isSubmitting }: CreateBaseFormProps) {
+export function CreateBaseForm({
+  onSubmit,
+  onCancel,
+  isSubmitting,
+}: CreateBaseFormProps) {
   const [form, setForm] = useState<CreateBaseInput>({
     name: "Untitled base",
     description: "",
@@ -41,62 +45,78 @@ export function CreateBaseForm({ onSubmit, onCancel, isSubmitting }: CreateBaseF
         if (!form.name.trim()) return;
         await onSubmit({
           name: form.name.trim(),
-          description: form.description?.trim() ? form.description.trim() : undefined,
+          description: form.description?.trim()
+            ? form.description.trim()
+            : undefined,
           color: form.color,
         });
       }}
     >
       <div className="flex flex-col gap-3">
-        <label className="text-sm font-medium text-slate-300" htmlFor="base-name">
+        <label
+          className="text-sm font-medium text-gray-700"
+          htmlFor="base-name"
+        >
           Base name
         </label>
         <input
           id="base-name"
           value={form.name}
           onChange={(event) =>
-            setForm((prev) => ({ ...prev, name: event.target.value.slice(0, 60) }))
+            setForm((prev) => ({
+              ...prev,
+              name: event.target.value.slice(0, 60),
+            }))
           }
-          className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-base font-semibold text-white outline-none transition placeholder:text-slate-400 focus:border-sky-400/70 focus:ring-4 focus:ring-sky-500/20"
+          className="rounded-lg border border-gray-300 bg-white px-4 py-3 text-base font-semibold text-gray-900 transition outline-none placeholder:text-gray-500 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
           placeholder="Product Roadmap"
           maxLength={60}
         />
       </div>
 
       <div className="flex flex-col gap-3">
-        <label className="text-sm font-medium text-slate-300" htmlFor="base-description">
+        <label
+          className="text-sm font-medium text-gray-700"
+          htmlFor="base-description"
+        >
           Description
         </label>
         <textarea
           id="base-description"
-          rows={3}
+          rows={2}
           value={form.description}
           onChange={(event) =>
-            setForm((prev) => ({ ...prev, description: event.target.value.slice(0, 160) }))
+            setForm((prev) => ({
+              ...prev,
+              description: event.target.value.slice(0, 160),
+            }))
           }
-          className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-400 focus:border-sky-400/70 focus:ring-4 focus:ring-sky-500/20"
+          className="resize-none rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 transition outline-none placeholder:text-gray-500 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20"
           placeholder="Plan, track, and deliver features with your team."
           maxLength={160}
         />
       </div>
 
       <fieldset className="flex flex-col gap-3">
-        <legend className="text-sm font-medium text-slate-300">Accent color</legend>
+        <legend className="text-sm font-medium text-gray-700">
+          Accent color
+        </legend>
         <div className="flex flex-wrap gap-2">
           {BASE_COLOR_OPTIONS.map((color) => (
             <button
               key={color}
               type="button"
               onClick={() => setForm((prev) => ({ ...prev, color }))}
-              className={`relative h-10 w-10 rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+              className={`relative h-10 w-10 rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-900 ${
                 form.color === color
-                  ? "ring-2 ring-offset-2 ring-offset-slate-950"
-                  : "border border-white/10"
+                  ? "ring-2 ring-offset-2 ring-offset-white"
+                  : "border border-gray-200"
               }`}
               style={{ backgroundColor: color }}
               aria-label={`Select ${color} accent`}
             >
               {form.color === color ? (
-                <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-slate-950">
+                <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-white">
                   ✓
                 </span>
               ) : null}
@@ -109,14 +129,14 @@ export function CreateBaseForm({ onSubmit, onCancel, isSubmitting }: CreateBaseF
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full bg-white/10 px-4 py-2 text-slate-200 transition hover:bg-white/20"
+          className="rounded-lg bg-gray-100 px-4 py-2 text-gray-700 transition hover:bg-gray-200"
         >
           Cancel
         </button>
         <button
           type="submit"
           disabled={isSubmitting}
-          className="rounded-full bg-sky-400 px-5 py-2 font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:opacity-70"
+          className="rounded-lg bg-blue-600 px-5 py-2 font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isSubmitting ? "Creating…" : "Create base"}
         </button>

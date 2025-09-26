@@ -8,11 +8,11 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const { userId } = await auth();
+  // const { userId } = await auth();
 
-  if (!userId) {
-    redirect("/");
-  }
+  // if (!userId) {
+  //   redirect("/");
+  // }
 
   return (
     <div className="min-h-screen bg-white text-gray-900">

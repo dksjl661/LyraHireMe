@@ -2,13 +2,27 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { LyraLogo } from "./lyra-logo";
 import { api } from "~/trpc/react";
-import { UserButton } from "@clerk/nextjs";
+
+const UserButton = dynamic(
+  () => import("@clerk/nextjs").then((mod) => ({ default: mod.UserButton })),
+  {
+    ssr: false,
+    loading: () => <div className="h-8 w-8 rounded-full bg-gray-300"></div>,
+  },
+);
 
 export function Sidebar() {
   const pathname = usePathname();
+  const [isClient, setIsClient] = useState(false);
   const { data: bases = [] } = api.base.list.useQuery();
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Don't show sidebar on landing page
   if (pathname === "/") {
@@ -67,31 +81,40 @@ export function Sidebar() {
             </div>
 
             <div className="mt-2 space-y-1">
-              {bases.map((base) => {
-                const isActive = pathname.includes(`/bases/${base.id}`);
-                return (
-                  <Link
-                    key={base.id}
-                    href={`/bases/${base.id}`}
-                    className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
-                      isActive
-                        ? "bg-gray-100 text-gray-900"
-                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                    }`}
-                  >
-                    <div
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: base.color }}
-                    />
-                    <span className="truncate">{base.name}</span>
-                  </Link>
-                );
-              })}
-
-              {bases.length === 0 && (
+              {!isClient ? (
+                // Loading state for SSR
                 <div className="px-3 py-2 text-sm text-gray-500">
-                  No bases yet
+                  Loading...
                 </div>
+              ) : (
+                <>
+                  {bases.map((base) => {
+                    const isActive = pathname.includes(`/bases/${base.id}`);
+                    return (
+                      <Link
+                        key={base.id}
+                        href={`/bases/${base.id}`}
+                        className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors ${
+                          isActive
+                            ? "bg-gray-100 text-gray-900"
+                            : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                        }`}
+                      >
+                        <div
+                          className="h-3 w-3 rounded-full"
+                          style={{ backgroundColor: base.color }}
+                        />
+                        <span className="truncate">{base.name}</span>
+                      </Link>
+                    );
+                  })}
+
+                  {bases.length === 0 && (
+                    <div className="px-3 py-2 text-sm text-gray-500">
+                      No bases yet
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
