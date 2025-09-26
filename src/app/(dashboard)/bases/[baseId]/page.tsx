@@ -2,6 +2,9 @@ import { HydrateClient, api } from "~/trpc/server";
 
 import { BaseDetailView } from "./_components/base-detail-view";
 
+// Force dynamic rendering to avoid database connection during build
+export const dynamic = "force-dynamic";
+
 type BaseDetailPageProps = {
   params: Promise<{ baseId: string }>;
 };
