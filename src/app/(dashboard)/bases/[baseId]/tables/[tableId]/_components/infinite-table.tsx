@@ -639,7 +639,17 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
     return allRecords;
   }, [allRecords]);
 
-  const fields = useMemo(() => tableStructure?.fields ?? [], [tableStructure]);
+  const fields = useMemo(() => {
+    const baseFields = tableStructure?.fields ?? [];
+    const getPriority = (field: TableField) => {
+      const lower = field.name.toLowerCase();
+      if (field.config?.isPrimary || lower.includes("name")) return 0;
+      if (lower.includes("status")) return 1;
+      if (lower.includes("email")) return 2;
+      return 3 + field.orderIndex;
+    };
+    return [...baseFields].sort((a, b) => getPriority(a) - getPriority(b));
+  }, [tableStructure]);
 
   // Create table columns
   const columns = useMemo<ColumnDef<TableRecord>[]>(() => {

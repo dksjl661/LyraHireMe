@@ -163,26 +163,34 @@ export const tableRouter = createTRPCRouter({
             },
             {
               tableId: table.id,
+              name: "Email",
+              type: "text",
+              orderIndex: 2,
+              config: {},
+            },
+            {
+              tableId: table.id,
               name: "Due Date",
               type: "date",
-              orderIndex: 2,
+              orderIndex: 3,
               config: {},
             },
             {
               tableId: table.id,
               name: "Notes",
               type: "longText",
-              orderIndex: 3,
+              orderIndex: 4,
               config: {},
             },
           ])
           .returning();
 
-        const primaryField = insertedFields.find(
-          (field) => field.orderIndex === 0,
-        );
+        const primaryField = insertedFields.find((field) => field.config?.isPrimary);
         const statusField = insertedFields.find(
           (field) => field.name === "Status",
+        );
+        const emailField = insertedFields.find(
+          (field) => field.name === "Email",
         );
         const dueDateField = insertedFields.find(
           (field) => field.name === "Due Date",
@@ -191,7 +199,13 @@ export const tableRouter = createTRPCRouter({
           (field) => field.name === "Notes",
         );
 
-        if (!primaryField || !statusField || !dueDateField || !notesField) {
+        if (
+          !primaryField ||
+          !statusField ||
+          !emailField ||
+          !dueDateField ||
+          !notesField
+        ) {
           throw new TRPCError({
             code: "INTERNAL_SERVER_ERROR",
             message: "Default fields could not be created",
@@ -203,6 +217,7 @@ export const tableRouter = createTRPCRouter({
             values: {
               [primaryField.id]: "Kickoff meeting",
               [statusField.id]: defaultFieldPalette[1]?.label ?? "In Progress",
+              [emailField.id]: "project-lead@example.com",
               [dueDateField.id]: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
                 .toISOString()
                 .split("T")[0], // 3 days (urgent)
@@ -213,6 +228,7 @@ export const tableRouter = createTRPCRouter({
             values: {
               [primaryField.id]: "Design review",
               [statusField.id]: defaultFieldPalette[0]?.label ?? "Backlog",
+              [emailField.id]: "design@example.com",
               [dueDateField.id]: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000)
                 .toISOString()
                 .split("T")[0], // 10 days (medium priority)
@@ -223,6 +239,7 @@ export const tableRouter = createTRPCRouter({
             values: {
               [primaryField.id]: "Launch prep",
               [statusField.id]: defaultFieldPalette[2]?.label ?? "Complete",
+              [emailField.id]: "ops@example.com",
               [dueDateField.id]: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
                 .toISOString()
                 .split("T")[0], // 2 days ago (overdue but complete)
@@ -233,9 +250,11 @@ export const tableRouter = createTRPCRouter({
             values: {
               [primaryField.id]: `Sample ${i + 1}`,
               [statusField.id]: defaultFieldPalette[1]?.label ?? "In Progress",
+              [emailField.id]: `team${i + 1}@example.com`,
               [dueDateField.id]: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
                 .toISOString()
                 .split("T")[0],
+              [notesField.id]: `Generated record ${i + 1}`,
             },
           })),
         ];
@@ -456,6 +475,8 @@ export const tableRouter = createTRPCRouter({
                   `${sampleDeliverables[i % sampleDeliverables.length]!} #${i + 1}`;
               } else if (field.name.toLowerCase().includes("project")) {
                 values[field.id] = sampleProjects[i % sampleProjects.length]!;
+              } else if (field.name.toLowerCase().includes("email")) {
+                values[field.id] = `contact${i + 1}@example.com`;
               } else if (
                 field.name.toLowerCase().includes("team") ||
                 field.name.toLowerCase().includes("assigned")
