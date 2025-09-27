@@ -341,7 +341,7 @@ export const tableRouter = createTRPCRouter({
       z.object({
         recordId: z.string().uuid(),
         fieldId: z.string().uuid(),
-        value: z.union([z.string(), z.boolean(), z.null()]),
+        value: z.union([z.string(), z.boolean(), z.null()]).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -360,7 +360,7 @@ export const tableRouter = createTRPCRouter({
       // Update the specific field value
       const updatedValues = {
         ...currentRecord.values,
-        [input.fieldId]: input.value,
+        [input.fieldId]: input.value ?? null,
       };
 
       const [updatedRecord] = await ctx.db
@@ -390,6 +390,51 @@ export const tableRouter = createTRPCRouter({
         );
 
       return { success: true };
+    }),
+
+  createField: publicProcedure
+    .input(
+      z.object({
+        tableId: z.string().uuid(),
+        name: z.string().min(1, "Name is required"),
+        type: z.enum(["text", "singleSelect", "longText", "checkbox", "date"]),
+        options: z
+          .array(z.object({ label: z.string(), color: z.string() }))
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const maxResult = await ctx.db
+        .select({
+          max: sql<number>`coalesce(max(${tableFields.orderIndex}), -1)`,
+        })
+        .from(tableFields)
+        .where(eq(tableFields.tableId, input.tableId));
+
+      const orderIndex = (maxResult[0]?.max ?? -1) + 1;
+
+      const config =
+        input.type === "singleSelect"
+          ? {
+              options:
+                input.options && input.options.length > 0
+                  ? input.options
+                  : defaultFieldPalette,
+            }
+          : {};
+
+      const [field] = await ctx.db
+        .insert(tableFields)
+        .values({
+          tableId: input.tableId,
+          name: input.name,
+          type: input.type,
+          orderIndex,
+          config,
+        })
+        .returning();
+
+      return field;
     }),
 
   deleteField: publicProcedure

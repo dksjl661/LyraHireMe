@@ -20,11 +20,20 @@ import {
 import { api } from "~/trpc/react";
 import type { RouterOutputs } from "~/trpc/react";
 
+type SelectOption = { label: string; color: string };
+
+const DEFAULT_FIELD_PALETTE: SelectOption[] = [
+  { label: "Backlog", color: "#f97316" },
+  { label: "In Progress", color: "#3b82f6" },
+  { label: "Complete", color: "#10b981" },
+];
+
 type TableField = RouterOutputs["table"]["get"]["fields"][number];
 type TableRecord = RouterOutputs["table"]["getRecords"]["records"][number];
 
 interface InfiniteTableProps {
   tableId: string;
+  onRequestAddColumn: () => void;
 }
 
 // Context Menu Component
@@ -98,6 +107,57 @@ function ContextMenu({
   );
 }
 
+function isSelectOptionArray(value: unknown): value is SelectOption[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (option) =>
+        option !== null &&
+        typeof option === "object" &&
+        "label" in option &&
+        "color" in option &&
+        typeof (option as { label: unknown }).label === "string" &&
+        typeof (option as { color: unknown }).color === "string",
+    )
+  );
+}
+
+function getSelectOptions(field: TableField): SelectOption[] {
+  const raw = field.config?.options;
+  return isSelectOptionArray(raw) ? raw : DEFAULT_FIELD_PALETTE;
+}
+
+function toDisplayString(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return "";
+}
+
+function getDateInputValue(value: unknown): string {
+  if (value instanceof Date) {
+    return value.toISOString().split("T")[0] ?? "";
+  }
+  const stringValue = toDisplayString(value);
+  if (!stringValue) return "";
+  const date = new Date(stringValue);
+  return Number.isNaN(date.getTime())
+    ? ""
+    : date.toISOString().split("T")[0] ?? "";
+}
+
+function formatDateForDisplay(value: unknown): string {
+  if (value instanceof Date) {
+    return value.toLocaleDateString();
+  }
+  const stringValue = toDisplayString(value);
+  if (!stringValue) return "";
+  const date = new Date(stringValue);
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString();
+}
+
 // Editable Cell Component
 interface EditableCellProps {
   value: unknown;
@@ -129,23 +189,20 @@ const EditableCell = React.memo(function EditableCell({
 
   const renderValue = () => {
     if (field.type === "singleSelect") {
-      const displayValue = String(value || "");
+      const displayValue = toDisplayString(value);
       let colorClass = "bg-gray-100 text-gray-800";
 
-      // Check if field has options defined
-      if (field.config?.options && Array.isArray(field.config.options)) {
-        const option = field.config.options.find(
-          (opt: any) => opt.label === displayValue,
-        );
-        if (option?.color) {
-          // Convert hex color to appropriate Tailwind classes (simplified)
-          if (option.color.includes("f97316"))
-            colorClass = "bg-orange-100 text-orange-800";
-          else if (option.color.includes("3b82f6"))
-            colorClass = "bg-blue-100 text-blue-800";
-          else if (option.color.includes("10b981"))
-            colorClass = "bg-green-100 text-green-800";
-        }
+      const option = getSelectOptions(field).find(
+        (opt) => opt.label === displayValue,
+      );
+      if (option?.color) {
+        // Convert hex color to appropriate Tailwind classes (simplified)
+        if (option.color.includes("f97316"))
+          colorClass = "bg-orange-100 text-orange-800";
+        else if (option.color.includes("3b82f6"))
+          colorClass = "bg-blue-100 text-blue-800";
+        else if (option.color.includes("10b981"))
+          colorClass = "bg-green-100 text-green-800";
       } else {
         // Default status colors
         if (displayValue === "Complete")
@@ -177,9 +234,7 @@ const EditableCell = React.memo(function EditableCell({
     }
 
     if (field.type === "date") {
-      const dateValue = value
-        ? new Date(String(value)).toLocaleDateString()
-        : "";
+      const dateValue = formatDateForDisplay(value);
       return (
         <span className="block truncate" title={dateValue}>
           {dateValue || "No date"}
@@ -188,26 +243,19 @@ const EditableCell = React.memo(function EditableCell({
     }
 
     return (
-      <span className="block truncate" title={String(value || "")}>
-        {String(value || "")}
+      <span className="block truncate" title={toDisplayString(value)}>
+        {toDisplayString(value)}
       </span>
     );
   };
 
   const renderEditInput = () => {
     if (field.type === "singleSelect") {
-      const options = (field.config?.options as Array<{
-        label: string;
-        color: string;
-      }>) || [
-        { label: "Backlog", color: "#f97316" },
-        { label: "In Progress", color: "#3b82f6" },
-        { label: "Complete", color: "#10b981" },
-      ];
+      const options = getSelectOptions(field);
 
       return (
         <select
-          value={String(editValue || "")}
+          value={toDisplayString(editValue)}
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={handleSave}
           onKeyDown={handleKeyDown}
@@ -226,7 +274,7 @@ const EditableCell = React.memo(function EditableCell({
     if (field.type === "longText") {
       return (
         <textarea
-          value={String(editValue || "")}
+          value={toDisplayString(editValue)}
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={handleSave}
           onKeyDown={handleKeyDown}
@@ -238,9 +286,7 @@ const EditableCell = React.memo(function EditableCell({
     }
 
     if (field.type === "date") {
-      const dateValue = editValue
-        ? new Date(String(editValue)).toISOString().split("T")[0]
-        : "";
+      const dateValue = getDateInputValue(editValue);
       return (
         <input
           type="date"
@@ -257,7 +303,7 @@ const EditableCell = React.memo(function EditableCell({
     return (
       <input
         type="text"
-        value={String(editValue || "")}
+        value={toDisplayString(editValue)}
         onChange={(e) => setEditValue(e.target.value)}
         onBlur={handleSave}
         onKeyDown={handleKeyDown}
@@ -319,8 +365,8 @@ function TopToolbar({
   );
 
   const addDueDateMutation = api.table.addDueDateField.useMutation({
-    onSuccess: () => {
-      utils.table.get.invalidate({ tableId });
+    onSuccess: async () => {
+      await utils.table.get.invalidate({ tableId });
     },
   });
   return (
@@ -433,7 +479,7 @@ function TopToolbar({
   );
 }
 
-export function InfiniteTable({ tableId }: InfiniteTableProps) {
+export function InfiniteTable({ tableId, onRequestAddColumn }: InfiniteTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [contextMenu, setContextMenu] = useState<{
     x: number;
@@ -457,7 +503,6 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
     hasNextPage,
     isFetching,
     isFetchingNextPage,
-    status,
     refetch,
   } = api.table.getRecords.useInfiniteQuery(
     { tableId, limit: 50 },
@@ -477,18 +522,19 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
     return data.pages.flatMap((page) => page.records);
   }, [data]);
 
+  const hasError = Boolean(structureError ?? recordsError);
   const combinedStatus = isLoadingStructure
     ? "pending"
-    : structureError || recordsError
+    : hasError
       ? "error"
       : "success";
-  const error = structureError || recordsError;
+  const error = structureError ?? recordsError;
 
   // Bulk add mutation
   const bulkAddMutation = api.table.createBulkRecords.useMutation({
     onSuccess: () => {
       // Refetch all data after bulk add
-      refetch();
+      void refetch();
     },
   });
 
@@ -533,16 +579,18 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
         );
       }
     },
-    onSettled: () => {
+    onSettled: async () => {
       // Always refetch after error or success to sync with server
-      utils.table.getRecords.invalidate({ tableId });
+      await utils.table.getRecords.invalidate({ tableId });
     },
   });
 
   const deleteRecordsMutation = api.table.deleteRecords.useMutation({
     onMutate: async ({ recordIds }) => {
       await utils.table.getRecords.cancel({ tableId });
-      const previousRecords = utils.table.getRecords.getInfiniteData({ tableId });
+      const previousRecords = utils.table.getRecords.getInfiniteData({
+        tableId,
+      });
 
       utils.table.getRecords.setInfiniteData({ tableId }, (old) => {
         if (!old) return old;
@@ -567,8 +615,8 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
         );
       }
     },
-    onSettled: () => {
-      utils.table.getRecords.invalidate({ tableId });
+    onSettled: async () => {
+      await utils.table.getRecords.invalidate({ tableId });
     },
   });
 
@@ -580,7 +628,9 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
       ]);
 
       const previousStructure = utils.table.get.getData({ tableId });
-      const previousRecords = utils.table.getRecords.getInfiniteData({ tableId });
+      const previousRecords = utils.table.getRecords.getInfiniteData({
+        tableId,
+      });
 
       utils.table.get.setData({ tableId }, (old) => {
         if (!old) return old;
@@ -597,10 +647,11 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
           pages: old.pages.map((page) => ({
             ...page,
             records: page.records.map((record) => {
-              const { [fieldId]: _removed, ...rest } = record.values ?? {};
+              const nextValues = { ...(record.values ?? {}) };
+              delete nextValues[fieldId];
               return {
                 ...record,
-                values: rest as typeof record.values,
+                values: nextValues as typeof record.values,
               };
             }),
           })),
@@ -620,9 +671,11 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
         );
       }
     },
-    onSettled: () => {
-      utils.table.get.invalidate({ tableId });
-      utils.table.getRecords.invalidate({ tableId });
+    onSettled: async () => {
+      await Promise.all([
+        utils.table.get.invalidate({ tableId }),
+        utils.table.getRecords.invalidate({ tableId }),
+      ]);
     },
   });
 
@@ -651,20 +704,16 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
     return [...baseFields].sort((a, b) => getPriority(a) - getPriority(b));
   }, [tableStructure]);
 
+  // Add record mutation
+  const createRecordMutation = api.table.createRecord.useMutation({
+    onSuccess: async () => {
+      await utils.table.getRecords.invalidate({ tableId });
+    },
+  });
+
   // Create table columns
   const columns = useMemo<ColumnDef<TableRecord>[]>(() => {
-    const cols: ColumnDef<TableRecord>[] = [
-      {
-        id: "select",
-        header: "",
-        size: 50,
-        cell: ({ row }) => (
-          <div className="flex h-full items-center justify-center text-xs text-gray-400">
-            {row.index + 1}
-          </div>
-        ),
-      },
-    ];
+    const cols: ColumnDef<TableRecord>[] = [];
 
     fields.forEach((field) => {
       cols.push({
@@ -731,18 +780,61 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
   const { rows } = table.getRowModel();
   const parentRef = useRef<HTMLDivElement>(null);
 
+  const handleAddRow = useCallback(() => {
+    if (fields.length === 0) return;
+
+    const nextIndex = rows.length + 1;
+    const values: Record<string, string | boolean | null> = {};
+
+    for (const field of fields) {
+      if (field.type === "checkbox") {
+        values[field.id] = false;
+        continue;
+      }
+
+      if (field.type === "singleSelect") {
+        const options = getSelectOptions(field);
+        values[field.id] = options[0]?.label ?? "Backlog";
+        continue;
+      }
+
+      if (field.type === "date") {
+        values[field.id] = new Date().toISOString().slice(0, 10);
+        continue;
+      }
+
+      const lowerName = field.name.toLowerCase();
+      if (field.config?.isPrimary || lowerName.includes("name")) {
+        values[field.id] = `Record ${nextIndex}`;
+        continue;
+      }
+
+      if (lowerName.includes("email")) {
+        values[field.id] = `user${nextIndex}@example.com`;
+        continue;
+      }
+
+      values[field.id] = "";
+    }
+
+    createRecordMutation.mutate({ tableId, values });
+  }, [createRecordMutation, fields, rows.length, tableId]);
+
   // Optimized virtual scrolling for 50-row batches
+  const rowHeight = 40;
+
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 40,
+    estimateSize: () => rowHeight,
     overscan: 20, // Higher overscan for smoother scrolling with small batches
     scrollMargin: parentRef.current?.offsetTop ?? 0,
   });
 
+  const virtualItems = virtualizer.getVirtualItems();
+
   // Aggressive prefetching for smooth scrolling with 50-row batches
   useEffect(() => {
-    const virtualItems = virtualizer.getVirtualItems();
     if (!virtualItems.length) return;
 
     const [lastItem] = [...virtualItems].reverse();
@@ -755,15 +847,9 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
       hasNextPage &&
       !isFetchingNextPage
     ) {
-      fetchNextPage();
+      void fetchNextPage();
     }
-  }, [
-    hasNextPage,
-    fetchNextPage,
-    rows.length,
-    isFetchingNextPage,
-    virtualizer.getVirtualItems(),
-  ]);
+  }, [hasNextPage, fetchNextPage, rows.length, isFetchingNextPage, virtualItems]);
 
   const handleContextMenu = useCallback(
     (
@@ -836,7 +922,7 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
           <div className="text-center">
             <p className="mb-2 text-lg text-gray-600">No records found</p>
             <p className="text-sm text-gray-500">
-              Click "Add 100k Rows" to get started
+              Click &quot;Add 100k Rows&quot; to get started
             </p>
           </div>
         </div>
@@ -848,13 +934,16 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
           <div
             className="relative w-full"
             style={{
-              height: `${virtualizer.getTotalSize()}px`,
+              height: `${virtualizer.getTotalSize() + rowHeight}px`,
             }}
           >
             {/* Header */}
             <div className="sticky top-0 z-10 border-b border-gray-200 bg-gray-50">
               {table.getHeaderGroups().map((headerGroup) => (
                 <div key={headerGroup.id} className="flex">
+                  <div className="flex h-10 w-14 items-center justify-center border-r border-gray-200 bg-gray-50 text-xs font-semibold text-gray-500">
+                    #
+                  </div>
                   {headerGroup.headers.map((header) => (
                     <div
                       key={header.id}
@@ -893,12 +982,20 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
                       )}
                     </div>
                   ))}
+                  <button
+                    type="button"
+                    onClick={onRequestAddColumn}
+                    className="flex h-10 w-14 flex-none items-center justify-center border-l border-gray-200 bg-gray-50 text-base font-semibold text-sky-600 transition hover:bg-sky-100"
+                    aria-label="Add column"
+                  >
+                    +
+                  </button>
                 </div>
               ))}
             </div>
 
             {/* Virtual Rows */}
-            {virtualizer.getVirtualItems().map((virtualRow) => {
+            {virtualItems.map((virtualRow) => {
               const row = rows[virtualRow.index];
               const isLoaderRow = virtualRow.index > rows.length - 1;
 
@@ -908,8 +1005,8 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
                     key={virtualRow.index}
                     className="absolute left-0 flex h-10 w-full items-center justify-center border-b border-gray-100 bg-white"
                     style={{
-                      height: `40px`,
-                      transform: `translateY(${virtualRow.index * 40}px)`,
+                      height: `${rowHeight}px`,
+                      transform: `translateY(${virtualRow.index * rowHeight}px)`,
                     }}
                   >
                     {hasNextPage ? (
@@ -935,8 +1032,8 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
                   key={row.id}
                   className="absolute left-0 flex h-10 w-full border-b border-gray-100 bg-white hover:bg-gray-50"
                   style={{
-                    height: `40px`,
-                    transform: `translateY(${virtualRow.index * 40}px)`,
+                    height: `${rowHeight}px`,
+                    transform: `translateY(${virtualRow.index * rowHeight}px)`,
                     // Optimize rendering performance
                     contain: "layout style paint",
                     willChange: "transform",
@@ -945,6 +1042,9 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
                     handleContextMenu(e, "row", virtualRow.index)
                   }
                 >
+                  <div className="flex w-14 items-center justify-center border-r border-gray-100 text-xs font-semibold text-gray-500">
+                    {virtualRow.index + 1}
+                  </div>
                   {row.getVisibleCells().map((cell) => (
                     <div
                       key={cell.id}
@@ -960,6 +1060,25 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
                 </div>
               );
             })}
+
+            <div
+              className="absolute left-0 flex h-10 w-full border-b border-gray-100 bg-white"
+              style={{
+                height: `${rowHeight}px`,
+                transform: `translateY(${rows.length * rowHeight}px)`,
+              }}
+            >
+              <button
+                type="button"
+                onClick={handleAddRow}
+                disabled={fields.length === 0}
+                className="flex w-14 items-center justify-center border-r border-gray-100 text-base font-semibold text-gray-500 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                aria-label="Add row"
+              >
+                +
+              </button>
+              <div className="flex-1" />
+            </div>
           </div>
         </div>
       )}
@@ -1017,6 +1136,7 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
           }
         />
       )}
+
     </div>
   );
 }

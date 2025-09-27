@@ -17,6 +17,7 @@ export default async function TablePage({ params }: TablePageProps) {
     api.table.get.prefetch({ tableId }),
     api.table.getRecords.prefetch({ tableId, limit: 50 }),
   ]);
+  
 
   return (
     <HydrateClient>

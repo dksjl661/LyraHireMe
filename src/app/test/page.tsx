@@ -1,15 +1,13 @@
 "use client";
 
-import { QueryClient, useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import React from "react";
 
 import { useVirtualizer } from "@tanstack/react-virtual";
 
-const queryClient = new QueryClient();
-
 async function fetchServerPage(
   limit: number,
-  offset: number = 0,
+  offset = 0,
 ): Promise<{ rows: Array<string>; nextOffset: number }> {
   const rows = new Array(limit)
     .fill(0)
@@ -47,8 +45,14 @@ function App() {
     overscan: 5,
   });
 
+  const virtualItems = rowVirtualizer.getVirtualItems();
+
   React.useEffect(() => {
-    const [lastItem] = [...rowVirtualizer.getVirtualItems()].reverse();
+    if (!virtualItems.length) {
+      return;
+    }
+
+    const [lastItem] = [...virtualItems].reverse();
 
     if (!lastItem) {
       return;
@@ -59,23 +63,16 @@ function App() {
       hasNextPage &&
       !isFetchingNextPage
     ) {
-      fetchNextPage();
+      void fetchNextPage();
     }
-  }, [
-    hasNextPage,
-    fetchNextPage,
-    allRows.length,
-    isFetchingNextPage,
-    rowVirtualizer.getVirtualItems(),
-  ]);
+  }, [hasNextPage, fetchNextPage, allRows.length, isFetchingNextPage, virtualItems]);
 
   return (
     <div>
       <p>
-        This infinite scroll example uses React Query's useInfiniteScroll hook
-        to fetch infinite data from a posts endpoint and then a rowVirtualizer
-        is used along with a loader-row placed at the bottom of the list to
-        trigger the next page to load.
+        This infinite scroll example uses the React Query useInfiniteScroll
+        hook to fetch an endless stream of rows. A rowVirtualizer and a loader
+        row at the bottom keep requesting the next page when you reach the end.
       </p>
 
       <br />
