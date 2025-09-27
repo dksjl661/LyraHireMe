@@ -75,7 +75,7 @@ export const tableRouter = createTRPCRouter({
       }),
     )
     .query(async ({ ctx, input }) => {
-      const offset = input.cursor || 0;
+      const offset = input.cursor ?? 0;
 
       // Ensure we always fetch the exact limit requested (50 rows)
       const records = await ctx.db
@@ -97,7 +97,7 @@ export const tableRouter = createTRPCRouter({
           .select({ count: sql<number>`count(*)` })
           .from(tableRecords)
           .where(eq(tableRecords.tableId, input.tableId));
-        totalCount = totalCountResult[0]?.count || 0;
+        totalCount = totalCountResult[0]?.count ?? 0;
       }
 
       // hasMore is true if we got exactly the limit we asked for
@@ -373,6 +373,29 @@ export const tableRouter = createTRPCRouter({
       return { success: true };
     }),
 
+  deleteField: publicProcedure
+    .input(z.object({ fieldId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [field] = await ctx.db
+        .delete(tableFields)
+        .where(eq(tableFields.id, input.fieldId))
+        .returning({ id: tableFields.id, tableId: tableFields.tableId });
+
+      if (!field) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Field not found",
+        });
+      }
+
+      await ctx.db
+        .update(tableRecords)
+        .set({ values: sql`${tableRecords.values} - ${input.fieldId}` })
+        .where(eq(tableRecords.tableId, field.tableId));
+
+      return { success: true };
+    }),
+
   createBulkRecords: publicProcedure
     .input(
       z.object({
@@ -418,10 +441,6 @@ export const tableRouter = createTRPCRouter({
         "Priya Singh",
       ];
 
-      // Find primary field and other field types
-      const primaryField = fields.find((f) => f.config?.isPrimary);
-      const statusField = fields.find((f) => f.type === "singleSelect");
-
       // Prepare bulk insert data
       const recordsToInsert = [];
       const batchSize = 1000; // Insert in batches for better performance
@@ -458,7 +477,7 @@ export const tableRouter = createTRPCRouter({
               ) {
                 const options = field.config.options;
                 values[field.id] =
-                  options[i % options.length]?.label ||
+                  options[i % options.length]?.label ??
                   sampleStatuses[i % sampleStatuses.length]!;
               } else {
                 values[field.id] = sampleStatuses[i % sampleStatuses.length]!;
@@ -491,7 +510,7 @@ export const tableRouter = createTRPCRouter({
                 Date.now() + daysOffset * 24 * 60 * 60 * 1000,
               );
               const dateString = futureDate.toISOString().split("T")[0];
-              values[field.id] = dateString || null;
+              values[field.id] = dateString ?? null;
               break;
             default:
               values[field.id] = `Value ${i + 1}`;

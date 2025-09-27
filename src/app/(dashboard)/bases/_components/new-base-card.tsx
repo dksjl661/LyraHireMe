@@ -44,7 +44,7 @@ export function NewBaseCard({ onCreated }: NewBaseCardProps) {
     <div className="flex h-[270px] flex-col rounded-3xl border border-gray-200 bg-white p-6 shadow-lg">
       <h2 className="text-lg font-semibold text-gray-900">Create a base</h2>
       <p className="mt-1 mb-4 text-sm text-gray-600">
-        Choose a name, description, and accent color to match Airtable's polish.
+        Choose a name, description, and accent color to match Airtable&rsquo;s polish.
       </p>
       <CreateBaseForm
         onSubmit={async (values) => {

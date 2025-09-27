@@ -34,6 +34,9 @@ interface ContextMenuProps {
   onClose: () => void;
   onDeleteRow?: () => void;
   onDeleteColumn?: () => void;
+  disableDeleteRow?: boolean;
+  disableDeleteColumn?: boolean;
+  deleteColumnLabel?: string;
   type: "row" | "column";
 }
 
@@ -43,6 +46,9 @@ function ContextMenu({
   onClose,
   onDeleteRow,
   onDeleteColumn,
+  disableDeleteRow,
+  disableDeleteColumn,
+  deleteColumnLabel,
   type,
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -70,7 +76,8 @@ function ContextMenu({
             onDeleteRow();
             onClose();
           }}
-          className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+          className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={disableDeleteRow}
         >
           Delete Row
         </button>
@@ -81,9 +88,10 @@ function ContextMenu({
             onDeleteColumn();
             onClose();
           }}
-          className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+          className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={disableDeleteColumn}
         >
-          Delete Column
+          {deleteColumnLabel ?? "Delete Column"}
         </button>
       )}
     </div>
@@ -469,8 +477,6 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
     return data.pages.flatMap((page) => page.records);
   }, [data]);
 
-  console.log("allRecords", allRecords.length);
-
   const combinedStatus = isLoadingStructure
     ? "pending"
     : structureError || recordsError
@@ -533,6 +539,93 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
     },
   });
 
+  const deleteRecordsMutation = api.table.deleteRecords.useMutation({
+    onMutate: async ({ recordIds }) => {
+      await utils.table.getRecords.cancel({ tableId });
+      const previousRecords = utils.table.getRecords.getInfiniteData({ tableId });
+
+      utils.table.getRecords.setInfiniteData({ tableId }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            records: page.records.filter(
+              (record) => !recordIds.includes(record.id),
+            ),
+          })),
+        };
+      });
+
+      return { previousRecords };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousRecords) {
+        utils.table.getRecords.setInfiniteData(
+          { tableId },
+          context.previousRecords,
+        );
+      }
+    },
+    onSettled: () => {
+      utils.table.getRecords.invalidate({ tableId });
+    },
+  });
+
+  const deleteFieldMutation = api.table.deleteField.useMutation({
+    onMutate: async ({ fieldId }) => {
+      await Promise.all([
+        utils.table.get.cancel({ tableId }),
+        utils.table.getRecords.cancel({ tableId }),
+      ]);
+
+      const previousStructure = utils.table.get.getData({ tableId });
+      const previousRecords = utils.table.getRecords.getInfiniteData({ tableId });
+
+      utils.table.get.setData({ tableId }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          fields: old.fields.filter((field) => field.id !== fieldId),
+        };
+      });
+
+      utils.table.getRecords.setInfiniteData({ tableId }, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            records: page.records.map((record) => {
+              const { [fieldId]: _removed, ...rest } = record.values ?? {};
+              return {
+                ...record,
+                values: rest as typeof record.values,
+              };
+            }),
+          })),
+        };
+      });
+
+      return { previousStructure, previousRecords };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousStructure) {
+        utils.table.get.setData({ tableId }, context.previousStructure);
+      }
+      if (context?.previousRecords) {
+        utils.table.getRecords.setInfiniteData(
+          { tableId },
+          context.previousRecords,
+        );
+      }
+    },
+    onSettled: () => {
+      utils.table.get.invalidate({ tableId });
+      utils.table.getRecords.invalidate({ tableId });
+    },
+  });
+
   const handleBulkAdd = useCallback(() => {
     bulkAddMutation.mutate({
       tableId,
@@ -546,9 +639,7 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
     return allRecords;
   }, [allRecords]);
 
-  console.log("optimizedRecords", optimizedRecords.length);
-
-  const fields = tableStructure?.fields || [];
+  const fields = useMemo(() => tableStructure?.fields ?? [], [tableStructure]);
 
   // Create table columns
   const columns = useMemo<ColumnDef<TableRecord>[]>(() => {
@@ -628,7 +719,6 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
   });
 
   const { rows } = table.getRowModel();
-  console.log("rows", rows.length);
   const parentRef = useRef<HTMLDivElement>(null);
 
   // Optimized virtual scrolling for 50-row batches
@@ -655,9 +745,6 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
       hasNextPage &&
       !isFetchingNextPage
     ) {
-      console.log(
-        `Fetching next 50 rows (current: ${rows.length}, trigger at: ${lastItem.index})`,
-      );
       fetchNextPage();
     }
   }, [
@@ -687,6 +774,20 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
     [],
   );
 
+  const targetRow =
+    contextMenu?.type === "row" &&
+    typeof contextMenu.rowIndex === "number" &&
+    contextMenu.rowIndex >= 0
+      ? rows[contextMenu.rowIndex]
+      : undefined;
+
+  const targetField =
+    contextMenu?.type === "column" && contextMenu.columnId
+      ? fields.find((field) => field.id === contextMenu.columnId)
+      : undefined;
+
+  const isPrimaryField = Boolean(targetField?.config?.isPrimary);
+
   if (combinedStatus === "pending") {
     return (
       <div className="flex h-96 items-center justify-center">
@@ -697,15 +798,6 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
       </div>
     );
   }
-
-  // Debug information
-  console.log("Table debug info:", {
-    optimizedRecords: optimizedRecords.length,
-    fields: fields.length,
-    totalPages: data?.pages?.length,
-    rows: rows.length,
-    actualNumberofRows: virtualizer.getVirtualItems().length,
-  });
 
   if (combinedStatus === "error") {
     return (
@@ -894,8 +986,25 @@ export function InfiniteTable({ tableId }: InfiniteTableProps) {
           y={contextMenu.y}
           type={contextMenu.type}
           onClose={() => setContextMenu(null)}
-          onDeleteRow={contextMenu.type === "row" ? () => {} : undefined}
-          onDeleteColumn={contextMenu.type === "column" ? () => {} : undefined}
+          onDeleteRow={
+            targetRow
+              ? () =>
+                  deleteRecordsMutation.mutate({
+                    tableId,
+                    recordIds: [targetRow.original.id],
+                  })
+              : undefined
+          }
+          disableDeleteRow={deleteRecordsMutation.isPending}
+          onDeleteColumn={
+            targetField && !isPrimaryField
+              ? () => deleteFieldMutation.mutate({ fieldId: targetField.id })
+              : undefined
+          }
+          disableDeleteColumn={deleteFieldMutation.isPending || isPrimaryField}
+          deleteColumnLabel={
+            isPrimaryField ? "Primary field cannot be deleted" : "Delete Column"
+          }
         />
       )}
     </div>

@@ -60,7 +60,7 @@ export function BaseDetailView({ baseId }: BaseDetailViewProps) {
               💡 Create your first table
             </h3>
             <p className="mt-1 text-sm text-blue-700">
-              This base doesn't have any tables yet. Use the card below to
+              This base doesn&rsquo;t have any tables yet. Use the card below to
               create your first table and start organizing your data.
             </p>
           </div>

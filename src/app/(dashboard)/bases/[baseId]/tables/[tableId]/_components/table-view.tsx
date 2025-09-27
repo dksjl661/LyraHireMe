@@ -1,10 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
 
 import { api } from "~/trpc/react";
-import { createGradientPair } from "~/lib/color";
 
 import { InfiniteTable } from "./infinite-table";
 
@@ -16,11 +14,6 @@ type TableViewProps = {
 export function TableView({ baseId, tableId }: TableViewProps) {
   const [base] = api.base.get.useSuspenseQuery({ baseId });
   const [table] = api.table.get.useSuspenseQuery({ tableId });
-
-  // const [primary, secondary] = useMemo(
-  //   () => createGradientPair(table.color ?? base.color ?? "#38bdf8"),
-  //   [table.color, base.color],
-  // );
 
   return (
     <div className="flex w-full flex-col gap-4 bg-white px-6 py-6">
