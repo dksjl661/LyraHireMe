@@ -12,7 +12,6 @@ const config = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  outputFileTracingRoot: "/Users/zifeizhou/code/lyra-airtable",
 };
 
 export default config;
